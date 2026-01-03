@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
-const sequelize = require('./config/database');
+const { sequelize } = require('./models');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -15,8 +15,9 @@ async function startServer() {
     console.log('Database connected successfully');
 
     if (process.env.NODE_ENV === 'development') {
+      // Development: dùng alter để cập nhật cấu trúc
       await sequelize.sync({ alter: true });
-      console.log('Database synchronized (development mode)');
+      console.log('Database synchronized (alter mode - structure updated)');
     } else {
       // Production: chỉ kiểm tra, không thay đổi cấu trúc
       await sequelize.sync({ alter: false });
