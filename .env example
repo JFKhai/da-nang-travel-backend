@@ -11,3 +11,8 @@ DB_DIALECT=mysql
 
 # Tạo database trong mysql
 CREATE DATABASE da_nang_travel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# setup Cloudinary
+CLOUD_NAME=dg6lkpuvm
+CLOUD_API_KEY=224537146374293
+CLOUD_API_SECRET=BVLMbSPL-OiMPhNDk-90mLpMHW8

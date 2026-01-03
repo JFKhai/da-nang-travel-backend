@@ -2,12 +2,18 @@ require('dotenv').config();
 
 const express = require('express');
 const { sequelize } = require('./models');
+// const uploadRoutes = require('./routes/upload.route');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// app.use('/api/uploads', uploadRoutes);
+// app.get('/', (req, res) => {
+//   res.send('Welcome to the Image Upload API');
+// });
 
 async function startServer() {
   try {
