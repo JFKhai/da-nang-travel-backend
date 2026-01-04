@@ -1,48 +1,40 @@
-const cloudinary = require('../config/cloudinary.config.js');
-const {uploadImageService, createReviewS} = require('../services/upload.service.js');
+const { success } = require('../utils/response');
+const AppError = require('../utils/AppError');
+const {
+  uploadImageService,
+  createReviewS
+} = require('../services/upload.service');
 
-const uploadImage = async (req, res) => {
+exports.uploadImage = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      throw new AppError('Không có file upload', 400);
     }
 
     const result = await uploadImageService(req.file.path);
 
-    res.status(200).json({
-      message: "Upload successful",
-      data: result,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Upload failed",
-      error: error.message,
-    });
+    res.status(200).send(
+      success(result, 'Upload ảnh thành công')
+    );
+  } catch (err) {
+    next(err);
   }
 };
 
-const createReview = async (req, res) => {
+exports.createReview = async (req, res, next) => {
   try {
-    const userId = req.user.id; // lấy từ middleware auth
+    const userId = req.user.id; // từ jwtVerify middleware
+
     const data = await createReviewS({
       body: req.body,
       files: req.files,
-      userId,
+      userId
     });
 
-    return res.status(201).json({
-      message: 'Create review success',
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      message: error.message || 'Create review failed',
-    });
+    res.status(201).send(
+      success(data, 'Tạo review thành công')
+    );
+  } catch (err) {
+    next(err);
   }
-};
-
-module.exports = {
-  uploadImage,
-  createReview
 };
