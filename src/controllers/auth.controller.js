@@ -57,3 +57,18 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
+exports.changePassword = async (req, res, next) => {
+  console.log('Request Body:', req.body);
+  try {
+    const userId = req.user.id;
+    const result = await authService.changePassword(userId, req.body);
+
+    res.status(200).send(
+      success(null, 'Đổi mật khẩu thành công')
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+

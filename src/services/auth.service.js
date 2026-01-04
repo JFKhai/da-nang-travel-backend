@@ -111,3 +111,37 @@ exports.updateProfile = async ({ userId, body, file }) => {
 
   return userJson;
 };
+
+
+exports.changePassword = async (userId, data) => {
+  const { old_password, new_password } = data;
+
+  // 1. Validate input
+  if (!old_password || !new_password) {
+    throw new AppError('Vui lòng nhập đầy đủ mật khẩu', 400);
+  }
+
+  if (new_password.length < 6) {
+    throw new AppError('Mật khẩu mới tối thiểu 6 ký tự', 400);
+  }
+
+  // 2. Tìm user
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new AppError('Người dùng không tồn tại', 404);
+  }
+
+  // 3. Check mật khẩu cũ
+  const isMatch = await bcrypt.compare(old_password, user.password);
+  if (!isMatch) {
+    throw new AppError('Mật khẩu cũ không đúng', 400);
+  }
+
+  // 4. Hash mật khẩu mới
+  const hashedPassword = await bcrypt.hash(new_password, 10);
+
+  await user.update({ password: hashedPassword });
+
+  return true;
+};
+
