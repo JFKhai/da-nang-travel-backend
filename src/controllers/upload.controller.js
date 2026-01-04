@@ -1,5 +1,5 @@
-const { success } = require('../utils/response');
-const AppError = require('../utils/AppError');
+const { success } = require('../utils/response.util');
+const AppError = require('../utils/AppError.util');
 const {
   uploadImageService,
   createReviewS

@@ -2,8 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const { sequelize } = require('./models');
+const uploadRoutes = require('./routes/upload.route');
 const authRoutes = require('./routes/auth.routes');
-// const uploadRoutes = require('./routes/upload.route');
 const errorHandler = require('./middleware/errorHandler.middleware');
 
 const app = express();
@@ -12,11 +12,12 @@ const PORT = process.env.PORT || 8080;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// app.use('/api/uploads', uploadRoutes);
 app.get('/', (req, res) => {
   res.send('Welcome to the Image Upload API');
 });
+
 app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use(errorHandler);
 
 async function startServer() {
@@ -24,14 +25,12 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('Database connected successfully');
 
-    if (process.env.NODE_ENV === 'development') {
-      // Development: dùng alter để cập nhật cấu trúc
-      await sequelize.sync({ alter: true });
-      console.log('Database synchronized (alter mode - structure updated)');
+    // 🔥 CHỈ SYNC KHI CHỦ ĐỘNG BẬT
+    if (process.env.DB_INIT === 'true') {
+      await sequelize.sync();
+      console.log('DB initialized (sync executed)');
     } else {
-      // Production: chỉ kiểm tra, không thay đổi cấu trúc
-      await sequelize.sync({ alter: false });
-      console.log('Database schema validated (production mode)');
+      console.log('DB sync skipped');
     }
 
     const server = app.listen(PORT, () => {
@@ -39,39 +38,22 @@ async function startServer() {
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 
-    process.on('SIGTERM', async () => {
-      console.log(' SIGTERM signal received: closing HTTP server');
+    const shutdown = async () => {
+      console.log('Shutting down server...');
       server.close(async () => {
-        console.log('HTTP server closed');
         await sequelize.close();
         console.log('Database connection closed');
         process.exit(0);
       });
-    });
+    };
 
-    process.on('SIGINT', async () => {
-      console.log(' SIGINT signal received: closing HTTP server');
-      server.close(async () => {
-        console.log('HTTP server closed');
-        await sequelize.close();
-        console.log('Database connection closed');
-        process.exit(0);
-      });
-    });
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+
   } catch (error) {
     console.error('Unable to start server:', error);
     process.exit(1);
   }
 }
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
-});
 
 startServer();
