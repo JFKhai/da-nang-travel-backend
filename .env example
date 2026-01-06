@@ -1,0 +1,24 @@
+# Server Configuration
+NODE_ENV=development
+PORT=8080
+
+# Database Configuration
+DB_NAME=your_database_name (da_nang_travel)
+DB_USER=your_username (root)
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_DIALECT=mysql
+
+# Tạo database trong mysql
+CREATE DATABASE da_nang_travel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# setup Cloudinary
+CLOUD_NAME=dg6lkpuvm
+CLOUD_API_KEY=224537146374293
+CLOUD_API_SECRET=BVLMbSPL-OiMPhNDk-90mLpMHW8
+
+#JWT_SECRET
+JWT_SECRET=123456789
+
+
+DB_INIT=false
