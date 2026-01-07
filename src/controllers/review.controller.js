@@ -19,11 +19,13 @@ exports.createReview = async (req, res, next) => {
 
 exports.updateReview = async (req, res, next) => {
   try {
+    const reviewId = req.params.id;
+    const userId = req.user.id;
+
     const result = await reviewService.updateReview({
-      reviewId: req.params.id,
-      userId: req.user.id,
+      reviewId,
+      userId,
       body: req.body,
-      files: req.files,
     });
 
     res.status(200).send(
@@ -33,6 +35,7 @@ exports.updateReview = async (req, res, next) => {
     next(err);
   }
 };
+
 
 exports.deleteReview = async (req, res, next) => {
   try {

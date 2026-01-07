@@ -68,80 +68,32 @@ exports.createReview = async ({ body, files, userId }) => {
   }
 };
 
-exports.updateReview = async ({ reviewId, userId, body, files }) => {
-  const transaction = await sequelize.transaction();
+exports.updateReview = async ({ reviewId, userId, body }) => {
+  const { title, content, stars } = body;
 
-  try {
-    const { title, content, stars } = body;
-
-    const review = await PlaceReview.findByPk(reviewId, {
-      include: [{ model: PlaceImage }],
-      transaction,
-    });
-
-    if (!review) {
-      throw new AppError('Review không tồn tại', 404);
-    }
-
-    if (review.user_id !== userId) {
-      throw new AppError('Bạn không có quyền sửa review này', 403);
-    }
-
-    // Update nội dung
-    await review.update(
-      {
-        title: title ?? review.title,
-        content: content ?? review.content,
-        stars: stars ?? review.stars,
-      },
-      { transaction }
-    );
-
-    let newImages = [];
-
-    // Nếu có upload ảnh mới → xóa ảnh cũ + upload ảnh mới
-    if (files && files.length > 0) {
-      const oldPublicIds = review.PlaceImages.map(
-        (img) => img.public_id
-      );
-
-      await deleteMultipleFromCloudinary(oldPublicIds);
-
-      await PlaceImage.destroy({
-        where: { review_id: reviewId },
-        transaction,
-      });
-
-      const uploadResults =
-        await uploadMultipleBuffersToCloudinary(
-          files,
-          'reviews'
-        );
-
-      const imagesData = uploadResults.map((img, index) => ({
-        place_id: review.place_id,
-        review_id: review.id,
-        url: img.secure_url,
-        public_id: img.public_id,
-        sort_order: index,
-      }));
-
-      newImages = await PlaceImage.bulkCreate(imagesData, {
-        transaction,
-      });
-    }
-
-    await transaction.commit();
-
-    return {
-      review,
-      images: newImages,
-    };
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
+  if (!title && !content && !stars) {
+    throw new AppError('Không có dữ liệu để cập nhật', 400);
   }
+
+  const review = await PlaceReview.findByPk(reviewId);
+
+  if (!review) {
+    throw new AppError('Review không tồn tại', 404);
+  }
+
+  if (review.user_id !== userId) {
+    throw new AppError('Bạn không có quyền sửa review này', 403);
+  }
+
+  await review.update({
+    title: title ?? review.title,
+    content: content ?? review.content,
+    stars: stars ?? review.stars,
+  });
+
+  return review;
 };
+
 
 
 exports.deleteReview = async ({ reviewId, userId }) => {

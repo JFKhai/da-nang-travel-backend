@@ -15,7 +15,6 @@ router.post(
 router.put(
   '/:id',
   jwtVerify,
-  upload.uploadMultiple,
   reviewController.updateReview
 );
 
