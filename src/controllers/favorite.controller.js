@@ -18,3 +18,18 @@ exports.toggleFavorite = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getMyFavorites = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const places = await favoriteService.getMyFavorites({ userId });
+
+    res.status(200).json({
+      success: true,
+      data: places,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

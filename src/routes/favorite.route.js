@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const favoriteController = require('../controllers/favorite.controller');
-const auth = require('../middlewares/auth');
+const jwtVerify = require('../middleware/jwtVerify.middleware');
 
-router.post('/toggle', auth, favoriteController.toggleFavorite);
+router.post('/toggle', jwtVerify, favoriteController.toggleFavorite);
+router.get('/me', jwtVerify, favoriteController.getMyFavorites);
 
 module.exports = router;

@@ -1,5 +1,5 @@
-const { Favorite, Place } = require('../models');
-const AppError = require('../utils/AppError');
+const { Favorite, Place, PlaceImage, Category } = require('../models');
+const AppError = require('../utils/AppError.util');
 
 exports.toggleFavorite = async ({ userId, place_id }) => {
   // 1. Check place tồn tại
@@ -34,4 +34,36 @@ exports.toggleFavorite = async ({ userId, place_id }) => {
     is_favorited: true,
     message: 'Đã thêm vào danh sách yêu thích',
   };
+};
+
+
+exports.getMyFavorites = async ({ userId }) => {
+  const favorites = await Favorite.findAll({
+    where: {
+      user_id: userId,
+    },
+    include: [
+      {
+        model: Place,
+        as: 'place',
+        include: [
+          {
+            model: PlaceImage,
+            as: 'coverImage',
+            attributes: ['id', 'url'],
+          },
+          {
+            model: Category,
+            as: 'categories',
+            attributes: ['id', 'name', 'slug'],
+            through: { attributes: [] },
+          },
+        ],
+      },
+    ],
+    order: [['created_at', 'DESC']],
+  });
+
+  // chỉ trả về place
+  return favorites.map((fav) => fav.place);
 };
