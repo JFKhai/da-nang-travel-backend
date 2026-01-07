@@ -52,3 +52,23 @@ exports.deleteReview = async (req, res, next) => {
   }
 };
 
+exports.getReviewsByPlace = async (req, res) => {
+  try {
+    const { placeId } = req.params;
+
+    const reviews = await reviewService.listReviewsByPlace(placeId);
+
+    return res.json({
+      success: true,
+      data: reviews,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get reviews',
+    });
+  }
+};
+
+

@@ -4,6 +4,7 @@ const express = require('express');
 const { sequelize } = require('./models');
 const reviewRoutes = require('./routes/review.route');
 const authRoutes = require('./routes/auth.routes');
+const favoriteRoutes = require('./routes/favorite.route');
 const errorHandler = require('./middleware/errorHandler.middleware');
 
 const app = express();
@@ -18,6 +19,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/review', reviewRoutes);
+app.use('/api/favorite', favoriteRoutes);
 app.use(errorHandler);
 
 async function startServer() {

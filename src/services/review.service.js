@@ -7,6 +7,7 @@ const { sequelize } = require('../models');
 const Place = require('../models/Place');
 const PlaceReview = require('../models/PlaceReview');
 const PlaceImage = require('../models/PlaceImage');
+const User = require('../models/User');
 const AppError = require('../utils/AppError.util');
 
 exports.createReview = async ({ body, files, userId }) => {
@@ -136,4 +137,23 @@ exports.deleteReview = async ({ reviewId, userId }) => {
     await transaction.rollback();
     throw error;
   }
+};
+
+exports.listReviewsByPlace = async (place_id) => {
+  return await PlaceReview.findAll({
+    where: { place_id },
+    include: [
+      {
+        model: User,
+        as: 'author',
+        attributes: ['id', 'full_name', 'avatar_url'],
+      },
+      {
+        model: PlaceImage,
+        as: 'images',
+        attributes: ['id', 'url', 'caption', 'sort_order'],
+      },
+    ],
+    order: [['created_at', 'DESC']],
+  });
 };

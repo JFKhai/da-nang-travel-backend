@@ -24,4 +24,6 @@ router.delete(
   reviewController.deleteReview
 );
 
+router.get('/place/:placeId', reviewController.getReviewsByPlace);
+
 module.exports = router;
