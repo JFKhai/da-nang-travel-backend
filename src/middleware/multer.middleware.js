@@ -1,11 +1,15 @@
 const multer = require('multer');
 
-const storage = multer.diskStorage({
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
+const storage = multer.memoryStorage();
+
+const multerConfig = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB / file
   },
 });
 
-const upload = multer({ storage });
-
-module.exports = upload;
+module.exports = {
+  uploadSingle: multerConfig.single('image'),
+  uploadMultiple: multerConfig.array('images', 5),
+};
