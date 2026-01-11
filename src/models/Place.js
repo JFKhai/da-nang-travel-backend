@@ -74,12 +74,19 @@ const Place = sequelize.define(
       defaultValue: DataTypes.NOW,
       field: 'updated_at',
     },
+    deleted_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'deleted_at',
+    },
   },
   {
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     tableName: 'places',
+    paranoid: true,
+    deletedAt: 'deleted_at',
   }
 );
 
