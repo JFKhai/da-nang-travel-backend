@@ -8,12 +8,6 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('Database connected successfully');
 
-    // if (process.env.DB_INIT === 'true') {
-    //   await sequelize.sync();
-    //   console.log('DB initialized'); 
-    // }
-
-    // Sync database schema in development mode
     if (
       process.env.DB_SYNC === 'true' &&
       process.env.NODE_ENV === 'development'
