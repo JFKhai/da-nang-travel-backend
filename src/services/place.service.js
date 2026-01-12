@@ -1,5 +1,17 @@
-const { th } = require("@faker-js/faker");
 const axios = require("axios");
+const {
+  Place,
+  PlaceImage,
+  PlaceCategory,
+  Category,
+  User,
+} = require('../models');
+const AppError = require('../utils/AppError.util');
+const {
+  uploadBufferToCloudinary,
+  deleteFromCloudinary,
+} = require('../utils/cloudinaryUpload.util');
+const sequelize = require('../config/database');
 
 const GOONG_API_KEY = process.env.GOONG_API_KEY;
 
@@ -79,20 +91,6 @@ async function getPlaceCoordinates(placeId) {
     );
   }
 }
-
-const {
-  Place,
-  PlaceImage,
-  PlaceCategory,
-  Category,
-  User,
-} = require('../models');
-const AppError = require('../utils/AppError.util');
-const {
-  uploadBufferToCloudinary,
-  deleteFromCloudinary,
-} = require('../utils/cloudinaryUpload.util');
-const sequelize = require('../config/database');
 
 exports.getPlaces = async (query) => {
   const {
