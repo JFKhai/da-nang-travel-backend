@@ -5,6 +5,7 @@ const reviewRoutes = require('./routes/review.route');
 const authRoutes = require('./routes/auth.routes');
 const favoriteRoutes = require('./routes/favorite.route');
 const placeRoutes = require('./routes/place.route');
+const placeRoute = require('./routes/place.routes');
 const errorHandler = require('./middleware/errorHandler.middleware');
 
 const app = express();
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/favorite', favoriteRoutes);
 app.use('/api/places', placeRoutes);
+app.use('/api/places', placeRoute);
 
 app.use(errorHandler);
 
