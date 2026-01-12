@@ -25,7 +25,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/favorite', favoriteRoutes);
 app.use('/api/places', placeRoutes);
-app.use("/api/places", placeRoutes);
 
 app.use(errorHandler);
 
