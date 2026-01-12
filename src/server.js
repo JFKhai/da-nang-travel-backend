@@ -1,13 +1,6 @@
-require('dotenv').config();
-
-const express = require('express');
+const app = require('./app');
 const { sequelize } = require('./models');
-const placeRoutes = require("./routes/place.routes");
-// const uploadRoutes = require('./routes/upload.route');
-// const authRoutes = require('./routes/auth.routes');
-// const errorHandler = require('./middleware/errorHandler.middleware');
 
-const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
@@ -27,21 +20,20 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('Database connected successfully');
 
-    // 🔥 CHỈ SYNC KHI CHỦ ĐỘNG BẬT
-    if (process.env.DB_INIT === 'true') {
-      await sequelize.sync();
-      console.log('DB initialized (sync executed)');
-    } else {
-      console.log('DB sync skipped');
+    if (
+      process.env.DB_SYNC === 'true' &&
+      process.env.NODE_ENV === 'development'
+    ) {
+      await sequelize.sync({ alter: true });
+      console.log('Database schema synchronized');
     }
 
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 
     const shutdown = async () => {
-      console.log('Shutting down server...');
+      console.log('Shutting down gracefully...');
       server.close(async () => {
         await sequelize.close();
         console.log('Database connection closed');
@@ -51,9 +43,8 @@ async function startServer() {
 
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
-
-  } catch (error) {
-    console.error('Unable to start server:', error);
+  } catch (err) {
+    console.error('Server failed to start:', err);
     process.exit(1);
   }
 }

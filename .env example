@@ -22,3 +22,23 @@ JWT_SECRET=123456789
 
 
 DB_INIT=false
+
+
+-- Xóa database cũ
+DROP DATABASE IF EXISTS da_nang_travel;
+
+-- Tạo lại database mới
+CREATE DATABASE da_nang_travel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Kiểm tra
+SHOW DATABASES;
+
+-- Thiết lập đồng bộ hóa cơ sở dữ liệu (file .env)
+DB_SYNC=true
+
+-- Chạy server để tự động tạo bảng (npm run dev)
+-- Tắt đồng bộ hóa sau khi bảng đã được tạo (file .env)
+DB_SYNC=false
+
+-- Chạy tập lệnh seed để chèn dữ liệu mẫu vào bảng
+node seed.js
