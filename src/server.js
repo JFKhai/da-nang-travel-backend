@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const { sequelize } = require('./models');
+const placeRoutes = require("./routes/place.routes");
 // const uploadRoutes = require('./routes/upload.route');
 // const authRoutes = require('./routes/auth.routes');
 // const errorHandler = require('./middleware/errorHandler.middleware');
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/api/places", placeRoutes);
 
 // app.get('/', (req, res) => {
 //   res.send('Welcome to the Image Upload API');
