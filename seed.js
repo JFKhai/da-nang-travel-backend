@@ -1,223 +1,162 @@
 require("dotenv").config();
-const mysql = require("mysql2/promise");
+const {
+  sequelize,
+  User,
+  Category,
+  Place,
+  PlaceImage,
+  PlaceCategory,
+  PlaceReview,
+  Favorite,
+} = require("./src/models");
 const { faker } = require("@faker-js/faker/locale/vi");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
-const dbConfig = {
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "admin",
-  database: process.env.DB_NAME || "da_nang_travel",
-  port: process.env.DB_PORT || 3306,
-};
-
-// Helper function to create slug from string
-const createSlug = (str) => {
-  return str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .replace(/([^0-9a-z-\s])/g, "")
-    .replace(/(\s+)/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
-};
-
-async function seed() {
-  let connection;
+const seedDatabase = async () => {
   try {
-    console.log(`Connecting to database: ${dbConfig.database}...`);
-    connection = await mysql.createConnection(dbConfig);
-    console.log("Connection established.");
+    console.log("Connecting to database...");
+    await sequelize.authenticate();
+    console.log("Connection established successfully.");
+    console.log("Syncing database schema (Dropping old tables)...");
+    await sequelize.sync({ force: true });
 
-    // 1.CLEAN UP OLD DATA
-    console.log("Cleaning up old data...");
-
-    // Disable foreign key checks to allow truncation
-    await connection.query("SET FOREIGN_KEY_CHECKS = 0");
-
-    const tables = [
-      "favorites",
-      "place_reviews",
-      "place_images",
-      "place_categories",
-      "places",
-      "categories",
-      "users",
-    ];
-
-    for (const table of tables) {
-      try {
-        await connection.query(`DELETE FROM ${table}`);
-        await connection.query(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
-        console.log(`   - Cleared table: ${table}`);
-      } catch (err) {
-        console.warn(`   Warning: Table '${table}' not found.`);
-      }
-    }
-
-    await connection.query("SET FOREIGN_KEY_CHECKS = 1");
-
-    // 2.SEED USERS
+    // 1.SEED USERS
     console.log("Seeding Users...");
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash("123456", salt);
 
-    const insertUserQuery = `INSERT INTO users (full_name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())`;
-
     // Create Admin User
-    const [adminRes] = await connection.execute(insertUserQuery, [
-      "Khai",
-      "admin@travel.com",
-      hashedPassword,
-      "admin",
-    ]);
-    const adminId = adminRes.insertId;
+    const admin = await User.create({
+      full_name: "Khai",
+      email: "admin@travel.com",
+      password: hashedPassword,
+      role: "admin",
+      avatar_url:
+        "https://ui-avatars.com/api/?name=Khai&background=0D8ABC&color=fff",
+    });
 
     // Create Normal Users
-    const userIds = [adminId];
+    const users = [];
+    users.push(admin);
+
     for (let i = 0; i < 5; i++) {
-      const [uRes] = await connection.execute(insertUserQuery, [
-        faker.person.fullName(),
-        faker.internet.email(),
-        hashedPassword,
-        "user",
-      ]);
-      userIds.push(uRes.insertId);
+      const user = await User.create({
+        full_name: faker.person.fullName(),
+        email: faker.internet.email(),
+        password: hashedPassword,
+        role: "user",
+        avatar_url: faker.image.avatar(),
+      });
+      users.push(user);
     }
 
-    // 3.SEED CATEGORIES
+    // 2.SEED CATEGORIES
     console.log("Seeding Categories...");
-    const categoriesList = [
-      { name: "Cà phê & Trà", slug: "coffee-tea" },
-      { name: "Ẩm thực", slug: "food" },
-      { name: "Check-in", slug: "check-in" },
-      { name: "Lịch sử", slug: "history" },
-      { name: "Vui chơi", slug: "entertainment" },
+    const categoryData = [
+      { name: "Cà phê & Trà", slug: "coffee-tea", icon: "coffee" },
+      { name: "Ẩm thực", slug: "food", icon: "utensils" },
+      { name: "Khách sạn", slug: "hotel", icon: "hotel" },
+      { name: "Check-in", slug: "check-in", icon: "camera" },
+      { name: "Lịch sử", slug: "history", icon: "landmark" },
+      { name: "Vui chơi", slug: "entertainment", icon: "gamepad" },
     ];
-    const categoryIds = [];
 
-    for (const cat of categoriesList) {
-      const [cRes] = await connection.execute(
-        `INSERT INTO categories (name, slug, icon, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
-        [
-          cat.name,
-          cat.slug,
-          faker.image.urlLoremFlickr({ category: "abstract" }),
-        ]
-      );
-      categoryIds.push(cRes.insertId);
+    const categories = [];
+    for (const cat of categoryData) {
+      const category = await Category.create(cat);
+      categories.push(category);
     }
 
-    // 4. SEED PLACES & RELATED DATA
+    // 3.SEED PLACES & RELATED DATA
     console.log("Seeding Places...");
-    const placeIds = [];
-
+    // Create 15 random places
     for (let i = 0; i < 15; i++) {
-      const randomOwner = userIds[Math.floor(Math.random() * userIds.length)];
+      const randomOwner = users[Math.floor(Math.random() * users.length)];
       const placeName = faker.company.name();
-      // Generate unique slug
-      const placeSlug =
-        createSlug(placeName) +
-        "-" +
-        faker.number.int({ min: 1000, max: 9999 });
 
-      // STEP 1: INSERT PLACE
-      const [placeRes] = await connection.execute(
-        `INSERT INTO places (name, slug, short_description, address, lat, lng, user_id, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [
-          placeName,
-          placeSlug,
-          faker.lorem.paragraph(),
-          faker.location.streetAddress() + ", Đà Nẵng",
-          16.0544 + (Math.random() - 0.5) * 0.05,
-          108.2022 + (Math.random() - 0.5) * 0.05,
-          randomOwner,
-        ]
-      );
-      const placeId = placeRes.insertId;
-      placeIds.push(placeId);
+      // Step 1: Create Place
+      const place = await Place.create({
+        name: placeName,
+        slug:
+          faker.helpers.slugify(placeName).toLowerCase() +
+          "-" +
+          faker.number.int({ min: 1000, max: 9999 }),
+        short_description: faker.lorem.paragraph(),
+        address: faker.location.streetAddress() + ", Đà Nẵng",
+        lat: 16.0544 + (Math.random() - 0.5) * 0.05,
+        lng: 108.2022 + (Math.random() - 0.5) * 0.05,
+        user_id: randomOwner.id,
+        phone: faker.phone.number(),
+        website: faker.internet.url(),
+        opening_hours: "08:00 - 22:00",
+        cover_image_id: null,
+      });
 
-      // STEP 2: INSERT PLACE IMAGES
-      const imageIds = [];
-      for (let img = 0; img < 3; img++) {
-        const [imgRes] = await connection.execute(
-          `INSERT INTO place_images (place_id, url, caption, created_at) VALUES (?, ?, ?, NOW())`,
-          [
-            placeId,
-            faker.image.urlLoremFlickr({ category: "city" }),
-            faker.lorem.sentence(),
-          ]
-        );
-        imageIds.push(imgRes.insertId);
+      // Step 2: Create Images
+      const images = [];
+      for (let j = 0; j < 3; j++) {
+        const image = await PlaceImage.create({
+          place_id: place.id,
+          url: faker.image.urlLoremFlickr({
+            category: "city",
+            width: 640,
+            height: 480,
+          }),
+          caption: faker.lorem.sentence(),
+          public_id: `seed_img_${place.id}_${j}`,
+        });
+        images.push(image);
       }
 
-      // STEP 3: UPDATE PLACE WITH COVER IMAGE
-      if (imageIds.length > 0) {
-        await connection.execute(
-          `UPDATE places SET cover_image_id = ? WHERE id = ?`,
-          [imageIds[0], placeId]
-        );
+      // Step 3: Update Place Cover Image
+      if (images.length > 0) {
+        await place.update({ cover_image_id: images[0].id });
       }
 
-      // STEP 4: PLACE CATEGORIES (Relation)
-      const randomCat =
-        categoryIds[Math.floor(Math.random() * categoryIds.length)];
-      await connection.execute(
-        `INSERT INTO place_categories (place_id, category_id) VALUES (?, ?)`,
-        [placeId, randomCat]
-      );
+      // Step 4: Assign Category
+      const randomCategory =
+        categories[Math.floor(Math.random() * categories.length)];
+      await PlaceCategory.create({
+        place_id: place.id,
+        category_id: randomCategory.id,
+      });
 
-      // STEP 5: PLACE REVIEWS
+      // Step 5: Create Reviews
       for (let k = 0; k < 2; k++) {
-        const reviewer = userIds[Math.floor(Math.random() * userIds.length)];
-        await connection.execute(
-          `INSERT INTO place_reviews (user_id, place_id, stars, title, content, created_at, updated_at) 
-           VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-          [
-            reviewer,
-            placeId,
-            faker.number.int({ min: 3, max: 5 }),
-            faker.lorem.sentence(5),
-            faker.lorem.paragraph(),
-          ]
-        );
+        const randomReviewer = users[Math.floor(Math.random() * users.length)];
+        await PlaceReview.create({
+          user_id: randomReviewer.id,
+          place_id: place.id,
+          stars: faker.number.int({ min: 3, max: 5 }),
+          title: faker.lorem.sentence(),
+          content: faker.lorem.paragraph(),
+        });
+      }
+
+      // Step 6: Create Favorites
+      for (const userItem of users) {
+        // Random 30% chance to favorite
+        if (Math.random() > 0.7) {
+          const existingFav = await Favorite.findOne({
+            where: { user_id: userItem.id, place_id: place.id },
+          });
+
+          if (!existingFav) {
+            await Favorite.create({
+              user_id: userItem.id,
+              place_id: place.id,
+            });
+          }
+        }
       }
     }
 
-    // 5.SEED FAVORITES
-    console.log("Seeding Favorites...");
-    for (const uid of userIds) {
-      const randomPlace = placeIds[Math.floor(Math.random() * placeIds.length)];
-
-      try {
-        await connection.execute(
-          `INSERT INTO favorites (user_id, place_id, created_at) VALUES (?, ?, NOW())`,
-          [uid, randomPlace]
-        );
-      } catch (e) {
-        // Ignore duplicate entry error
-      }
-    }
-
-    console.log("SEED COMPLETED SUCCESSFULLY!");
+    console.log("SEEDING COMPLETED SUCCESSFULLY!");
+    process.exit(0);
   } catch (error) {
-    console.error("FATAL ERROR DETAILS:", error);
-    if (error.code === "ER_BAD_DB_ERROR") {
-      console.error(
-        "HINT: Database 'da_nang_travel' does not exist. Please create it in MySQL Workbench."
-      );
-    }
-    if (error.code === "ER_ACCESS_DENIED_ERROR") {
-      console.error(
-        "HINT: Access denied. Check DB_USER and DB_PASSWORD in .env file."
-      );
-    }
-  } finally {
-    if (connection) connection.end();
+    console.error("FATAL ERROR DURING SEEDING:", error);
+    process.exit(1);
   }
-}
+};
 
-seed();
+seedDatabase();
