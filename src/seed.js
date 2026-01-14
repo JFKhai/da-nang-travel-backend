@@ -1,4 +1,3 @@
-require("dotenv").config();
 const {
   sequelize,
   User,
@@ -8,7 +7,7 @@ const {
   PlaceCategory,
   PlaceReview,
   Favorite,
-} = require("./src/models");
+} = require("./models");
 const { faker } = require("@faker-js/faker/locale/vi");
 const bcrypt = require("bcryptjs");
 
