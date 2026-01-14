@@ -7,6 +7,10 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
+console.log("DEBUG KẾT NỐI DATABASE (SOITIN)");
+console.log("HOST: [" + process.env.DB_HOST + "]");
+console.log("PORT: [" + process.env.DB_PORT + "]");
+
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
