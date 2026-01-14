@@ -3,6 +3,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const AppError = require('../utils/AppError.util');
 const cloudinary = require('../config/cloudinary.config');
+const {
+  uploadBufferToCloudinary,
+} = require('../utils/cloudinaryUpload.util');
 
 exports.register = async ({ email, password, full_name }) => {
   // 1. Check email tồn tại
@@ -84,21 +87,19 @@ exports.updateProfile = async ({ userId, body, file }) => {
     throw new AppError('Người dùng không tồn tại', 404);
   }
 
-  let avatar_url = user.avatar_url;
-
-  // 👇 nếu có upload ảnh mới
-  if (file) {
-    const uploadResult = await cloudinary.uploader.upload(file.path, {
-      folder: 'avatars',
-      resource_type: 'image',
-    });
-
-    avatar_url = uploadResult.secure_url;
-  }
-
-  // 👇 check có gì để update không
   if (!full_name && !file) {
     throw new AppError('Không có dữ liệu để cập nhật', 400);
+  }
+
+  let avatar_url = user.avatar_url;
+
+  if (file) {
+    const uploadResult = await uploadBufferToCloudinary(
+      file.buffer,
+      'image'
+    );
+
+    avatar_url = uploadResult.secure_url;
   }
 
   await user.update({
