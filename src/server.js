@@ -1,38 +1,38 @@
-const app = require('./app');
-const { sequelize } = require('./models');
+const app = require("./app");
+const { sequelize } = require("./models");
 
 const PORT = process.env.PORT || 8080;
 
 async function startServer() {
   try {
     await sequelize.authenticate();
-    console.log('Database connected successfully');
+    console.log("Database connected successfully");
 
     if (
-      process.env.DB_SYNC === 'true' &&
-      process.env.NODE_ENV === 'development'
+      process.env.DB_SYNC === "true" &&
+      process.env.NODE_ENV === "development"
     ) {
       await sequelize.sync({ alter: true });
-      console.log('Database schema synchronized');
+      console.log("Database schema synchronized");
     }
 
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
     });
 
     const shutdown = async () => {
-      console.log('Shutting down gracefully...');
+      console.log("Shutting down gracefully...");
       server.close(async () => {
         await sequelize.close();
-        console.log('Database connection closed');
+        console.log("Database connection closed");
         process.exit(0);
       });
     };
 
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
   } catch (err) {
-    console.error('Server failed to start:', err);
+    console.error("Server failed to start:", err);
     process.exit(1);
   }
 }
