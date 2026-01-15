@@ -163,7 +163,7 @@ exports.getPlaces = async (query) => {
     const { Op } = require('sequelize');
 
     // Parse category - can be string or array
-    let categorySlugs = Array.isArray(category) ? category : [category];
+    let categorySlugs = Array.isArray(category) ? category : category.split(",");
 
     // Filter out empty strings and trim
     categorySlugs = categorySlugs
