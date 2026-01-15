@@ -1,6 +1,6 @@
 const { success } = require('../utils/response.util');
 const placeService = require('../services/place.service');
-const GooglePlaceService = require("../services/place.service");
+const GooglePlaceService = require('../services/place.service');
 
 exports.getPlaces = async (req, res, next) => {
   try {
@@ -82,7 +82,7 @@ exports.autocompletePlace = async (req, res) => {
 
     if (!keyword) {
       return res.status(400).json({
-        message: "Keyword is required",
+        message: 'Keyword is required',
       });
     }
 
@@ -96,7 +96,7 @@ exports.autocompletePlace = async (req, res) => {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: "Goong Places API error",
+      message: 'Goong Places API error',
     });
   }
 };
@@ -106,7 +106,7 @@ exports.getPlaceCoordinates = async (req, res) => {
     const { placeId } = req.query;
     if (!placeId) {
       return res.status(400).json({
-        message: "placeId is required",
+        message: 'placeId is required',
       });
     }
     const data = await GooglePlaceService.getPlaceCoordinates(placeId);
@@ -118,7 +118,7 @@ exports.getPlaceCoordinates = async (req, res) => {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: "Goong Places API error",
+      message: 'Goong Places API error',
     });
   }
 };
