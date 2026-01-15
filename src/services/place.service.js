@@ -1,10 +1,11 @@
-const axios = require("axios");
+const axios = require('axios');
 const {
   Place,
   PlaceImage,
   PlaceCategory,
   Category,
   User,
+  PlaceReview,
 } = require('../models');
 const AppError = require('../utils/AppError.util');
 const {
@@ -15,14 +16,15 @@ const sequelize = require('../config/database');
 
 const GOONG_API_KEY = process.env.GOONG_API_KEY;
 
-if (!GOONG_API_KEY)  throw new Error("Missing GOONG_API_KEY in environment variables");
+if (!GOONG_API_KEY)
+  throw new Error('Missing GOONG_API_KEY in environment variables');
 
-const GOONG_API_URL = "https://rsapi.goong.io";
+const GOONG_API_URL = 'https://rsapi.goong.io';
 
 async function autocomplete(keyword) {
   if (!keyword) return [];
   if (!GOONG_API_KEY) {
-    throw new Error("Missing GOONG_API_KEY in environment variables");
+    throw new Error('Missing GOONG_API_KEY in environment variables');
   }
 
   try {
@@ -35,7 +37,7 @@ async function autocomplete(keyword) {
       timeout: 10000,
     });
 
-    console.log("Goong Autocomplete Response:", response.data);
+    console.log('Goong Autocomplete Response:', response.data);
 
     const predictions = response?.data?.predictions || [];
 
@@ -49,7 +51,7 @@ async function autocomplete(keyword) {
     const status = err?.response?.status;
     const data = err?.response?.data;
     throw new Error(
-      `Goong autocomplete failed${status ? ` (HTTP ${status})` : ""}: ${
+      `Goong autocomplete failed${status ? ` (HTTP ${status})` : ''}: ${
         data ? JSON.stringify(data) : err.message
       }`
     );
@@ -57,9 +59,9 @@ async function autocomplete(keyword) {
 }
 
 async function getPlaceCoordinates(placeId) {
-  if (!placeId) throw new Error("Missing placeId");
+  if (!placeId) throw new Error('Missing placeId');
   if (!GOONG_API_KEY) {
-    throw new Error("Missing GOONG_API_KEY in environment variables");
+    throw new Error('Missing GOONG_API_KEY in environment variables');
   }
 
   try {
@@ -85,7 +87,7 @@ async function getPlaceCoordinates(placeId) {
     const status = err?.response?.status;
     const data = err?.response?.data;
     throw new Error(
-      `Goong place detail failed${status ? ` (HTTP ${status})` : ""}: ${
+      `Goong place detail failed${status ? ` (HTTP ${status})` : ''}: ${
         data ? JSON.stringify(data) : err.message
       }`
     );
@@ -156,20 +158,47 @@ exports.getPlaces = async (query) => {
     },
   ];
 
-  // Filter by category
-  if (category && category.trim() !== '') {
-    const categorySlug = category.trim();
-    const categoryRecord = await Category.findOne({
-      where: { slug: categorySlug },
-    });
+  // Filter by category (support multiple categories)
+  if (category) {
+    const { Op } = require('sequelize');
 
-    if (!categoryRecord) {
-      throw new AppError('Danh mục không tồn tại', 404);
+    // Parse category - can be string or array
+    let categorySlugs = Array.isArray(category) ? category : [category];
+
+    // Filter out empty strings and trim
+    categorySlugs = categorySlugs
+      .map((slug) => String(slug).trim())
+      .filter((slug) => slug !== '');
+
+    if (categorySlugs.length > 0) {
+      // Find all matching categories
+      const categoryRecords = await Category.findAll({
+        where: { slug: { [Op.in]: categorySlugs } },
+        attributes: ['id', 'slug'],
+      });
+
+      if (categoryRecords.length === 0) {
+        throw new AppError('Không tìm thấy danh mục nào phù hợp', 404);
+      }
+
+      // Check if all requested categories exist
+      const foundSlugs = categoryRecords.map((cat) => cat.slug);
+      const notFoundSlugs = categorySlugs.filter(
+        (slug) => !foundSlugs.includes(slug)
+      );
+
+      if (notFoundSlugs.length > 0) {
+        throw new AppError(
+          `Danh mục không tồn tại: ${notFoundSlugs.join(', ')}`,
+          404
+        );
+      }
+
+      // Add category filter - places must have at least one of these categories
+      const categoryIds = categoryRecords.map((cat) => cat.id);
+      include[0].where = { id: { [Op.in]: categoryIds } };
+      include[0].required = true; // Inner join
     }
-
-    // Add category filter
-    include[0].where = { id: categoryRecord.id };
-    include[0].required = true; // Inner join
   }
 
   // Validate sort options
@@ -187,27 +216,61 @@ exports.getPlaces = async (query) => {
     throw new AppError('SortOrder phải là ASC hoặc DESC', 400);
   }
 
-  // Fetch places with count
-  const { count, rows: places } = await Place.findAndCountAll({
+  // Get total count first
+  const totalCount = await Place.count({
+    where,
+    include: category ? [include[0]] : [],
+    distinct: true,
+  });
+
+  // Fetch places
+  const places = await Place.findAll({
     where,
     include,
     limit: limitNum,
     offset,
     order: [[sortBy, sortOrder.toUpperCase()]],
-    distinct: true, // Important for accurate count with associations
+    distinct: true,
   });
 
+  // Add review stats to each place
+  const placesWithStats = await Promise.all(
+    places.map(async (place) => {
+      const reviewStats = await PlaceReview.findOne({
+        where: { place_id: place.id },
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
+          [
+            sequelize.fn(
+              'COALESCE',
+              sequelize.fn('AVG', sequelize.col('stars')),
+              0
+            ),
+            'averageRating',
+          ],
+        ],
+        raw: true,
+      });
+
+      const placeJson = place.toJSON();
+      placeJson.reviewCount = parseInt(reviewStats?.reviewCount || 0);
+      placeJson.averageRating = parseFloat(reviewStats?.averageRating || 0);
+
+      return placeJson;
+    })
+  );
+
   // Calculate pagination metadata
-  const totalPages = Math.ceil(count / limitNum);
+  const totalPages = Math.ceil(totalCount / limitNum);
   const hasNextPage = pageNum < totalPages;
   const hasPrevPage = pageNum > 1;
 
   return {
-    places,
+    places: placesWithStats,
     pagination: {
       currentPage: pageNum,
       totalPages,
-      totalItems: count,
+      totalItems: totalCount,
       itemsPerPage: limitNum,
       hasNextPage,
       hasPrevPage,
@@ -257,7 +320,29 @@ exports.getPlaceById = async (placeId) => {
     throw new AppError('Địa điểm không tồn tại hoặc đã bị xóa', 404);
   }
 
-  return place;
+  // Get review stats separately
+  const reviewStats = await PlaceReview.findOne({
+    where: { place_id: id },
+    attributes: [
+      [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
+      [
+        sequelize.fn(
+          'COALESCE',
+          sequelize.fn('AVG', sequelize.col('stars')),
+          0
+        ),
+        'averageRating',
+      ],
+    ],
+    raw: true,
+  });
+
+  // Add review stats to place object
+  const placeWithStats = place.toJSON();
+  placeWithStats.reviewCount = parseInt(reviewStats?.reviewCount || 0);
+  placeWithStats.averageRating = parseFloat(reviewStats?.averageRating || 0);
+
+  return placeWithStats;
 };
 
 exports.createPlace = async ({ userId, body, files }) => {
@@ -825,4 +910,6 @@ exports.softDeletePlace = async ({ placeId, userId, userRole }) => {
   return { message: 'Xóa địa điểm thành công' };
 };
 
-module.exports = { autocomplete, getPlaceCoordinates };
+// Export all functions
+exports.autocomplete = autocomplete;
+exports.getPlaceCoordinates = getPlaceCoordinates;
