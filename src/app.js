@@ -37,8 +37,8 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/review", reviewRoutes);
 app.use("/api/favorite", favoriteRoutes);
-app.use("/api/places", placeRoutes);
 app.use("/api/places", placeRoute);
+app.use("/api/places", placeRoutes);
 app.use("/api/categories", categoryRoutes);
 
 app.use(errorHandler);
