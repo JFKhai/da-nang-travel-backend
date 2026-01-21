@@ -1,23 +1,12 @@
 const axios = require('axios');
-const {
-  Place,
-  PlaceImage,
-  PlaceCategory,
-  Category,
-  User,
-  PlaceReview,
-} = require('../models');
+const { Place, PlaceImage, PlaceCategory, Category, User, PlaceReview } = require('../models');
 const AppError = require('../utils/AppError.util');
-const {
-  uploadBufferToCloudinary,
-  deleteFromCloudinary,
-} = require('../utils/cloudinaryUpload.util');
+const { uploadBufferToCloudinary, deleteFromCloudinary } = require('../utils/cloudinaryUpload.util');
 const sequelize = require('../config/database');
 
 const GOONG_API_KEY = process.env.GOONG_API_KEY;
 
-if (!GOONG_API_KEY)
-  throw new Error('Missing GOONG_API_KEY in environment variables');
+if (!GOONG_API_KEY) throw new Error('Missing GOONG_API_KEY in environment variables');
 
 const GOONG_API_URL = 'https://rsapi.goong.io';
 
@@ -50,11 +39,7 @@ async function autocomplete(keyword) {
   } catch (err) {
     const status = err?.response?.status;
     const data = err?.response?.data;
-    throw new Error(
-      `Goong autocomplete failed${status ? ` (HTTP ${status})` : ''}: ${
-        data ? JSON.stringify(data) : err.message
-      }`
-    );
+    throw new Error(`Goong autocomplete failed${status ? ` (HTTP ${status})` : ''}: ${data ? JSON.stringify(data) : err.message}`);
   }
 }
 
@@ -86,23 +71,12 @@ async function getPlaceCoordinates(placeId) {
   } catch (err) {
     const status = err?.response?.status;
     const data = err?.response?.data;
-    throw new Error(
-      `Goong place detail failed${status ? ` (HTTP ${status})` : ''}: ${
-        data ? JSON.stringify(data) : err.message
-      }`
-    );
+    throw new Error(`Goong place detail failed${status ? ` (HTTP ${status})` : ''}: ${data ? JSON.stringify(data) : err.message}`);
   }
 }
 
 exports.getPlaces = async (query) => {
-  const {
-    page = 1,
-    limit = 10,
-    search,
-    category,
-    sortBy = 'created_at',
-    sortOrder = 'DESC',
-  } = query;
+  const { page = 1, limit = 10, search, category, sortBy = 'created_at', sortOrder = 'DESC' } = query;
 
   // Validate pagination params
   const pageNum = parseInt(page);
@@ -124,11 +98,7 @@ exports.getPlaces = async (query) => {
   // Search by name or address
   if (search && search.trim() !== '') {
     const { Op } = require('sequelize');
-    where[Op.or] = [
-      { name: { [Op.like]: `%${search.trim()}%` } },
-      { address: { [Op.like]: `%${search.trim()}%` } },
-      { short_description: { [Op.like]: `%${search.trim()}%` } },
-    ];
+    where[Op.or] = [{ name: { [Op.like]: `%${search.trim()}%` } }, { address: { [Op.like]: `%${search.trim()}%` } }, { short_description: { [Op.like]: `%${search.trim()}%` } }];
   }
 
   // Build include clause
@@ -143,6 +113,7 @@ exports.getPlaces = async (query) => {
       model: PlaceImage,
       as: 'images',
       attributes: ['id', 'url', 'public_id', 'caption', 'sort_order'],
+      where: { review_id: null },
       separate: true,
       order: [['sort_order', 'ASC']],
     },
@@ -163,12 +134,10 @@ exports.getPlaces = async (query) => {
     const { Op } = require('sequelize');
 
     // Parse category - can be string or array
-    let categorySlugs = Array.isArray(category) ? category : category.split(",");
+    let categorySlugs = Array.isArray(category) ? category : category.split(',');
 
     // Filter out empty strings and trim
-    categorySlugs = categorySlugs
-      .map((slug) => String(slug).trim())
-      .filter((slug) => slug !== '');
+    categorySlugs = categorySlugs.map((slug) => String(slug).trim()).filter((slug) => slug !== '');
 
     if (categorySlugs.length > 0) {
       // Find all matching categories
@@ -183,15 +152,10 @@ exports.getPlaces = async (query) => {
 
       // Check if all requested categories exist
       const foundSlugs = categoryRecords.map((cat) => cat.slug);
-      const notFoundSlugs = categorySlugs.filter(
-        (slug) => !foundSlugs.includes(slug)
-      );
+      const notFoundSlugs = categorySlugs.filter((slug) => !foundSlugs.includes(slug));
 
       if (notFoundSlugs.length > 0) {
-        throw new AppError(
-          `Danh mục không tồn tại: ${notFoundSlugs.join(', ')}`,
-          404
-        );
+        throw new AppError(`Danh mục không tồn tại: ${notFoundSlugs.join(', ')}`, 404);
       }
 
       // Add category filter - places must have at least one of these categories
@@ -206,10 +170,7 @@ exports.getPlaces = async (query) => {
   const validSortOrders = ['ASC', 'DESC'];
 
   if (!validSortFields.includes(sortBy)) {
-    throw new AppError(
-      `SortBy phải là một trong: ${validSortFields.join(', ')}`,
-      400
-    );
+    throw new AppError(`SortBy phải là một trong: ${validSortFields.join(', ')}`, 400);
   }
 
   if (!validSortOrders.includes(sortOrder.toUpperCase())) {
@@ -240,14 +201,7 @@ exports.getPlaces = async (query) => {
         where: { place_id: place.id },
         attributes: [
           [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
-          [
-            sequelize.fn(
-              'COALESCE',
-              sequelize.fn('AVG', sequelize.col('stars')),
-              0
-            ),
-            'averageRating',
-          ],
+          [sequelize.fn('COALESCE', sequelize.fn('AVG', sequelize.col('stars')), 0), 'averageRating'],
         ],
         raw: true,
       });
@@ -257,7 +211,7 @@ exports.getPlaces = async (query) => {
       placeJson.averageRating = parseFloat(reviewStats?.averageRating || 0);
 
       return placeJson;
-    })
+    }),
   );
 
   // Calculate pagination metadata
@@ -301,6 +255,7 @@ exports.getPlaceById = async (placeId) => {
         model: PlaceImage,
         as: 'images',
         attributes: ['id', 'url', 'public_id', 'caption', 'sort_order'],
+        where: { review_id: null },
         order: [['sort_order', 'ASC']],
       },
       {
@@ -325,14 +280,7 @@ exports.getPlaceById = async (placeId) => {
     where: { place_id: id },
     attributes: [
       [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
-      [
-        sequelize.fn(
-          'COALESCE',
-          sequelize.fn('AVG', sequelize.col('stars')),
-          0
-        ),
-        'averageRating',
-      ],
+      [sequelize.fn('COALESCE', sequelize.fn('AVG', sequelize.col('stars')), 0), 'averageRating'],
     ],
     raw: true,
   });
@@ -350,18 +298,7 @@ exports.createPlace = async ({ userId, body, files }) => {
   const uploadedPublicIds = []; // Tracking để rollback
 
   try {
-    const {
-      name,
-      slug,
-      short_description,
-      address,
-      phone,
-      website,
-      opening_hours,
-      lat,
-      lng,
-      categories,
-    } = body;
+    const { name, slug, short_description, address, phone, website, opening_hours, lat, lng, categories } = body;
 
     // Validate required fields
     if (!name || !slug) {
@@ -370,10 +307,7 @@ exports.createPlace = async ({ userId, body, files }) => {
 
     const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     if (!slugRegex.test(slug)) {
-      throw new AppError(
-        'Slug chỉ được chứa chữ thường, số và dấu gạch ngang',
-        400
-      );
+      throw new AppError('Slug chỉ được chứa chữ thường, số và dấu gạch ngang', 400);
     }
 
     // Validate và parse categories
@@ -399,10 +333,7 @@ exports.createPlace = async ({ userId, body, files }) => {
 
     // Must have at least one: address OR coordinates
     if (!hasAddress && !hasCoordinates) {
-      throw new AppError(
-        'Phải cung cấp địa chỉ hoặc tọa độ (vĩ độ và kinh độ)',
-        400
-      );
+      throw new AppError('Phải cung cấp địa chỉ hoặc tọa độ (vĩ độ và kinh độ)', 400);
     }
 
     let latNum = null;
@@ -455,7 +386,7 @@ exports.createPlace = async ({ userId, body, files }) => {
         lng: hasCoordinates ? lngNum : null,
         user_id: userId,
       },
-      { transaction }
+      { transaction },
     );
 
     // Handle categories
@@ -482,15 +413,12 @@ exports.createPlace = async ({ userId, body, files }) => {
         place_id: place.id,
         category_id: categoryId,
       })),
-      { transaction }
+      { transaction },
     );
 
     // Handle image uploads
     const imageUploadPromises = files.map(async (file, index) => {
-      const uploadResult = await uploadBufferToCloudinary(
-        file.buffer,
-        'places'
-      );
+      const uploadResult = await uploadBufferToCloudinary(file.buffer, 'places');
       uploadedPublicIds.push(uploadResult.public_id); // Track để rollback
       return {
         place_id: place.id,
@@ -507,10 +435,7 @@ exports.createPlace = async ({ userId, body, files }) => {
 
     // Set first image as cover image
     if (createdImages.length > 0) {
-      await place.update(
-        { cover_image_id: createdImages[0].id },
-        { transaction }
-      );
+      await place.update({ cover_image_id: createdImages[0].id }, { transaction });
     }
 
     await transaction.commit();
@@ -548,9 +473,7 @@ exports.createPlace = async ({ userId, body, files }) => {
 
     // Rollback Cloudinary uploads
     if (uploadedPublicIds.length > 0) {
-      await Promise.all(
-        uploadedPublicIds.map((publicId) => deleteFromCloudinary(publicId))
-      );
+      await Promise.all(uploadedPublicIds.map((publicId) => deleteFromCloudinary(publicId)));
     }
 
     throw err;
@@ -598,10 +521,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
 
     const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     if (!slugRegex.test(slug)) {
-      throw new AppError(
-        'Slug chỉ được chứa chữ thường, số và dấu gạch ngang',
-        400
-      );
+      throw new AppError('Slug chỉ được chứa chữ thường, số và dấu gạch ngang', 400);
     }
 
     // Validate slug if changed
@@ -633,10 +553,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
 
       // Must have at least one: address OR coordinates
       if (!hasAddress && !hasCoordinates) {
-        throw new AppError(
-          'Phải cung cấp địa chỉ hoặc tọa độ (vĩ độ và kinh độ)',
-          400
-        );
+        throw new AppError('Phải cung cấp địa chỉ hoặc tọa độ (vĩ độ và kinh độ)', 400);
       }
 
       if (hasCoordinates) {
@@ -661,20 +578,13 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (slug !== undefined) updateData.slug = slug;
-    if (short_description !== undefined)
-      updateData.short_description = short_description;
-    if (address !== undefined)
-      updateData.address =
-        address && String(address).trim() !== '' ? address : null;
+    if (short_description !== undefined) updateData.short_description = short_description;
+    if (address !== undefined) updateData.address = address && String(address).trim() !== '' ? address : null;
     if (phone !== undefined) updateData.phone = phone;
     if (website !== undefined) updateData.website = website;
     if (opening_hours !== undefined) updateData.opening_hours = opening_hours;
-    if (lat !== undefined)
-      updateData.lat =
-        lat && String(lat).trim() !== '' ? parseFloat(lat) : null;
-    if (lng !== undefined)
-      updateData.lng =
-        lng && String(lng).trim() !== '' ? parseFloat(lng) : null;
+    if (lat !== undefined) updateData.lat = lat && String(lat).trim() !== '' ? parseFloat(lat) : null;
+    if (lng !== undefined) updateData.lng = lng && String(lng).trim() !== '' ? parseFloat(lng) : null;
 
     await place.update(updateData, { transaction });
 
@@ -716,40 +626,40 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
           place_id: placeId,
           category_id: categoryId,
         })),
-        { transaction }
+        { transaction },
       );
     }
-
     // Handle image deletion
     let imageIdsToDelete = [];
     if (deleteImages) {
-      // Validate and parse deleteImages
-      imageIdsToDelete = Array.isArray(deleteImages)
-        ? deleteImages
-        : [deleteImages];
-      imageIdsToDelete = imageIdsToDelete
-        .map((id) => parseInt(id))
-        .filter((id) => !isNaN(id) && id > 0);
-    }
+      if (typeof deleteImages === 'string') {
+        try {
+          imageIdsToDelete = JSON.parse(deleteImages);
+        } catch (e) {
+          imageIdsToDelete = deleteImages.split(',').map((id) => id.trim());
+        }
+      } else if (Array.isArray(deleteImages)) {
+        imageIdsToDelete = deleteImages;
+      } else {
+        imageIdsToDelete = [deleteImages];
+      }
 
+      imageIdsToDelete = imageIdsToDelete.map((id) => parseInt(id)).filter((id) => !isNaN(id) && id > 0);
+    }
     // Calculate final image count after deletion and new uploads
     const currentImageCount = await PlaceImage.count({
-      where: { place_id: placeId },
+      where: { place_id: placeId, review_id: null },
       transaction,
     });
-    const newFilesCount = files ? files.length : 0;
-    const finalImageCount =
-      currentImageCount - imageIdsToDelete.length + newFilesCount;
 
+    const newFilesCount = files ? files.length : 0;
+    const finalImageCount = currentImageCount - imageIdsToDelete.length + newFilesCount;
     // Validate minimum and maximum image count
     if (finalImageCount < 1) {
       throw new AppError('Địa điểm phải có ít nhất 1 hình ảnh', 400);
     }
     if (finalImageCount > 5) {
-      throw new AppError(
-        `Tối đa 5 hình ảnh. Hiện có ${currentImageCount} ảnh, bạn đang xóa ${imageIdsToDelete.length} ảnh và thêm ${newFilesCount} ảnh mới`,
-        400
-      );
+      throw new AppError(`Tối đa 5 hình ảnh. Hiện có ${currentImageCount} ảnh, bạn đang xóa ${imageIdsToDelete.length} ảnh và thêm ${newFilesCount} ảnh mới`, 400);
     }
 
     if (imageIdsToDelete.length > 0) {
@@ -795,13 +705,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
         await place.update({ cover_image_id: newCoverId }, { transaction });
       }
 
-      // Delete images from Cloudinary BEFORE transaction commit
-      if (deletedPublicIds.length > 0) {
-        await Promise.all(
-          deletedPublicIds.map((publicId) => deleteFromCloudinary(publicId))
-        );
-      }
-
+      // Delete from database FIRST (within transaction)
       await PlaceImage.destroy({
         where: {
           id: imageIdsToDelete,
@@ -809,6 +713,10 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
         },
         transaction,
       });
+
+      if (deletedPublicIds.length > 0) {
+        await Promise.all(deletedPublicIds.map((publicId) => deleteFromCloudinary(publicId)));
+      }
     }
 
     // Handle new image uploads
@@ -821,10 +729,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
       const nextSortOrder = maxSortOrder !== null ? maxSortOrder + 1 : 0;
 
       const imageUploadPromises = files.map(async (file, index) => {
-        const uploadResult = await uploadBufferToCloudinary(
-          file.buffer,
-          'places'
-        );
+        const uploadResult = await uploadBufferToCloudinary(file.buffer, 'places');
         uploadedPublicIds.push(uploadResult.public_id);
         return {
           place_id: placeId,
@@ -841,10 +746,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
 
       // If no cover image exists, set first new image as cover
       if (!place.cover_image_id && createdImages.length > 0) {
-        await place.update(
-          { cover_image_id: createdImages[0].id },
-          { transaction }
-        );
+        await place.update({ cover_image_id: createdImages[0].id }, { transaction });
       }
     }
 
@@ -862,6 +764,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
         {
           model: PlaceImage,
           as: 'images',
+          where: { review_id: null },
           attributes: ['id', 'url', 'public_id', 'caption', 'sort_order'],
         },
         {
@@ -883,9 +786,7 @@ exports.updatePlace = async ({ placeId, userId, userRole, body, files }) => {
 
     // Rollback new Cloudinary uploads
     if (uploadedPublicIds.length > 0) {
-      await Promise.all(
-        uploadedPublicIds.map((publicId) => deleteFromCloudinary(publicId))
-      );
+      await Promise.all(uploadedPublicIds.map((publicId) => deleteFromCloudinary(publicId)));
     }
 
     throw err;
@@ -908,6 +809,88 @@ exports.softDeletePlace = async ({ placeId, userId, userRole }) => {
   await place.destroy();
 
   return { message: 'Xóa địa điểm thành công' };
+};
+
+exports.getRelatedPlaces = async ({ categoryIds, excludePlaceId }) => {
+  // Validate category IDs
+  if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
+    throw new AppError('Phải cung cấp ít nhất một category ID', 400);
+  }
+
+  const parsedCategoryIds = categoryIds.map((id) => parseInt(id));
+  const validIds = parsedCategoryIds.filter((id) => !isNaN(id) && id > 0);
+
+  if (validIds.length === 0) {
+    throw new AppError('Category IDs không hợp lệ', 400);
+  }
+
+  const { Op } = require('sequelize');
+
+  // Build where clause
+  const where = { deleted_at: null };
+
+  // Exclude current place if provided
+  if (excludePlaceId) {
+    const excludeId = parseInt(excludePlaceId);
+    if (!isNaN(excludeId) && excludeId > 0) {
+      where.id = { [Op.ne]: excludeId };
+    }
+  }
+
+  // Find places that have at least one of the specified categories
+  const places = await Place.findAll({
+    where,
+    include: [
+      {
+        model: Category,
+        as: 'categories',
+        attributes: ['id', 'name', 'slug'],
+        through: { attributes: [] },
+        where: { id: { [Op.in]: validIds } },
+        required: true, // Inner join - only places with matching categories
+      },
+      {
+        model: PlaceImage,
+        as: 'images',
+        attributes: ['id', 'url', 'public_id', 'caption', 'sort_order'],
+        where: { review_id: null },
+        required: false,
+        separate: true,
+        order: [['sort_order', 'ASC']],
+      },
+      {
+        model: PlaceImage,
+        as: 'coverImage',
+        attributes: ['id', 'url'],
+        where: { review_id: null },
+        required: false,
+      },
+    ],
+    order: [['created_at', 'DESC']], // Newest first
+    distinct: true,
+  });
+
+  // Add review stats to each place
+  const placesWithStats = await Promise.all(
+    places.map(async (place) => {
+      const reviewStats = await PlaceReview.findOne({
+        where: { place_id: place.id },
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'reviewCount'],
+          [sequelize.fn('COALESCE', sequelize.fn('AVG', sequelize.col('stars')), 0), 'averageRating'],
+        ],
+        raw: true,
+      });
+
+      const placeJson = place.toJSON();
+      placeJson.reviewCount = parseInt(reviewStats?.reviewCount || 0);
+      placeJson.averageRating = parseFloat(reviewStats?.averageRating || 0);
+
+      return placeJson;
+    }),
+  );
+
+  return placesWithStats;
 };
 
 // Export all functions
