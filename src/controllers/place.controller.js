@@ -122,3 +122,24 @@ exports.getPlaceCoordinates = async (req, res) => {
     });
   }
 };
+
+exports.getRelatedPlaces = async (req, res, next) => {
+  try {
+    const { categoryIds, excludePlaceId, limit } = req.query;
+
+    // Parse categoryIds from comma-separated string or array
+    let parsedCategoryIds = categoryIds;
+    if (typeof categoryIds === 'string') {
+      parsedCategoryIds = categoryIds.split(',').filter((id) => id.trim() !== '');
+    }
+
+    const places = await placeService.getRelatedPlaces({
+      categoryIds: parsedCategoryIds,
+      excludePlaceId,
+    });
+
+    res.status(200).send(success(places, 'Lấy danh sách địa điểm liên quan thành công'));
+  } catch (err) {
+    next(err);
+  }
+};

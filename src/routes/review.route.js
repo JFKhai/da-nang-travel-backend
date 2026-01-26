@@ -12,11 +12,7 @@ router.post(
   reviewController.createReview
 );
 
-router.put(
-  '/:id',
-  jwtVerify,
-  reviewController.updateReview
-);
+router.put('/:id', jwtVerify, upload.uploadMultiple, reviewController.updateReview);
 
 router.delete(
   '/:id',
