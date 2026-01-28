@@ -26,11 +26,10 @@ exports.updateReview = async (req, res, next) => {
       reviewId,
       userId,
       body: req.body,
+      files: req.files,
     });
 
-    res.status(200).send(
-      success(result, 'Cập nhật review thành công')
-    );
+    res.status(200).send(success(result, 'Cập nhật review thành công'));
   } catch (err) {
     next(err);
   }
