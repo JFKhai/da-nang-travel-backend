@@ -182,3 +182,90 @@ exports.listReviewsByPlace = async (place_id) => {
     order: [['created_at', 'DESC']],
   });
 };
+
+exports.adminUpdateReview = async ({ reviewId, body, files }) => {
+  const { title, content, stars, deleteImageIds } = body;
+
+  if (!title && !content && !stars && (!files || files.length === 0) && !deleteImageIds) {
+    throw new AppError('Không có dữ liệu để cập nhật', 400);
+  }
+
+  const review = await PlaceReview.findByPk(reviewId, {
+    include: [{ model: PlaceImage, as: 'images' }],
+  });
+
+  if (!review) {
+    throw new AppError('Review không tồn tại', 404);
+  }
+
+  if (deleteImageIds && Array.isArray(deleteImageIds)) {
+    const imagesToDelete = review.images.filter((image) => deleteImageIds.includes(image.id));
+    const publicIds = imagesToDelete.map((img) => img.public_id);
+
+    await deleteMultipleFromCloudinary(publicIds);
+    await PlaceImage.destroy({ where: { id: deleteImageIds } }); 
+  }
+
+  await review.update({
+    title: title ?? review.title,
+    content: content ?? review.content,
+    stars: stars ?? review.stars,
+  });
+
+  let images = [];
+
+  if (files && files.length > 0) {
+    const uploadResults = await uploadMultipleBuffersToCloudinary(files, 'images');
+
+    const imagesData = uploadResults.map((img) => ({
+      place_id: review.place_id,
+      review_id: review.id,
+      url: img.secure_url,
+      public_id: img.public_id,
+    }));
+
+    images = await PlaceImage.bulkCreate(imagesData);
+  }
+
+  return { review, images };
+};
+
+
+
+exports.adminDeleteReview = async ({ reviewId }) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const review = await PlaceReview.findByPk(reviewId, {
+      include: [
+        {
+          model: PlaceImage,
+          as: 'images',
+        },
+      ],
+      transaction,
+    });
+
+    if (!review) {
+      throw new AppError('Review không tồn tại', 404);
+    }
+
+    const publicIds = review.images.map(
+      (img) => img.public_id
+    );
+
+    await deleteMultipleFromCloudinary(publicIds);
+
+    await PlaceImage.destroy({
+      where: { review_id: reviewId },
+      transaction,
+    });
+
+    await review.destroy({ transaction });
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};

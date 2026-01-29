@@ -70,4 +70,33 @@ exports.getReviewsByPlace = async (req, res) => {
   }
 };
 
+exports.adminUpdateReview = async (req, res, next) => {
+  try {
+    const reviewId = req.params.id;
 
+    const result = await reviewService.adminUpdateReview({
+      reviewId,
+      body: req.body,
+      files: req.files,
+    });
+
+    res.status(200).send(success(result, 'Cập nhật review thành công'));
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+exports.adminDeleteReview = async (req, res, next) => {
+  try {
+    await reviewService.adminDeleteReview({
+      reviewId: req.params.id,
+    });
+
+    res.status(200).send(
+      success(null, 'Xóa review thành công')
+    );
+  } catch (err) {
+    next(err);
+  }
+};
