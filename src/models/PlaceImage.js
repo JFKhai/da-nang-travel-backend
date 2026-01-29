@@ -29,6 +29,10 @@ const PlaceImage = sequelize.define(
       type: DataTypes.STRING(1000),
       allowNull: false,
     },
+    public_id: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
     caption: {
       type: DataTypes.STRING(500),
       allowNull: true,

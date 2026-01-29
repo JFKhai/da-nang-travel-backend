@@ -8,7 +8,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', jwtVerify, getMe);
-router.put('/me', jwtVerify, upload.single('avatar'), updateProfile);
+router.put('/me', jwtVerify, upload.uploadSingle, updateProfile);
 router.put('/change-password', jwtVerify, changePassword);
 
 
