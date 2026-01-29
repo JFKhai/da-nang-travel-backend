@@ -9,6 +9,7 @@ const placeRoutes = require('./routes/place.route');
 const placeRoute = require('./routes/place.routes');
 const categoryRoutes = require('./routes/category.routes');
 const errorHandler = require('./middleware/errorHandler.middleware');
+const adminRoutes = require('./routes/admin.route');
 
 const app = express();
 const morgan = require('morgan');
@@ -21,7 +22,7 @@ if (process.env.NODE_ENV === 'development') {
    CORS CONFIG 
 ======================= */
 app.use(cors({
-  origin: 'http://localhost:3000', 
+  origin: 'http://localhost:3000',
 }));
 
 
@@ -38,7 +39,7 @@ app.use('/api/favorite', favoriteRoutes);
 app.use('/api/places', placeRoute);
 app.use('/api/places', placeRoutes);
 app.use('/api/categories', categoryRoutes);
-
+app.use('/api/admin', adminRoutes);
 app.use(errorHandler);
 
 module.exports = app;
