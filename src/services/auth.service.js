@@ -146,3 +146,43 @@ exports.changePassword = async (userId, data) => {
   return true;
 };
 
+exports.adminGetUsers = async (params = {}) => {
+  const { search } = params;
+  const { Op } = require('sequelize');
+  let where = {};
+
+  if (search) {
+    where = {
+      [Op.or]: [
+        { full_name: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } }
+      ]
+    };
+  }
+
+  return await User.findAll({
+    where,
+    attributes: { exclude: ['password'] },
+    order: [['created_at', 'DESC']]
+  });
+};
+exports.adminUpdateUser = async (userId, data) => {
+  const { role, resetPassword } = data;
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new AppError('Người dùng không tồn tại', 404);
+
+  let updateData = {};
+  if (role) updateData.role = role;
+
+  if (resetPassword) {
+    const hashedPassword = await bcrypt.hash(user.email, 10);
+    updateData.password = hashedPassword;
+  }
+
+  await user.update(updateData);
+
+  const userJson = user.toJSON();
+  delete userJson.password;
+  return userJson;
+};

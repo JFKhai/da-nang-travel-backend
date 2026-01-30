@@ -2,7 +2,7 @@ const { success } = require('../utils/response.util');
 const authService = require('../services/auth.service');
 
 exports.register = async (req, res, next) => {
-    console.log('Request Body:', req.body);
+  console.log('Request Body:', req.body);
   try {
     const user = await authService.register(req.body);
 
@@ -15,7 +15,7 @@ exports.register = async (req, res, next) => {
 };
 
 exports.login = async (req, res, next) => {
-    console.log('Request Body:', req.body);
+  console.log('Request Body:', req.body);
   try {
     const result = await authService.login(req.body);
 
@@ -71,4 +71,27 @@ exports.changePassword = async (req, res, next) => {
   }
 };
 
+exports.adminGetUsers = async (req, res, next) => {
+  try {
+    const users = await authService.adminGetUsers();
 
+    res.status(200).send(
+      success(users, 'Lấy danh sách người dùng thành công')
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.adminUpdateUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await authService.adminUpdateUser(id, req.body);
+
+    res.status(200).send(
+      success(result, 'Cập nhật trạng thái người dùng thành công')
+    );
+  } catch (err) {
+    next(err);
+  }
+};
